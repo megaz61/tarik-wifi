@@ -1761,39 +1761,40 @@ export default function HomePage() {
 
       {/* Top Navbar */}
       <header className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-xs">
-              <Wifi className="w-5 h-5" />
+        <div className="max-w-[1520px] mx-auto px-3 sm:px-6 lg:px-8 h-auto py-2.5 sm:h-16 sm:py-0 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-xs shrink-0">
+              <Wifi className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-slate-900 leading-tight">
-                  Rekap Pengguna Akses Free WiFi
+                <h1 className="text-sm sm:text-base font-bold text-slate-900 leading-tight truncate">
+                  <span className="hidden sm:inline">Rekap Pengguna Akses Free WiFi</span>
+                  <span className="sm:hidden">Free WiFi Lawson</span>
                 </h1>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] text-slate-500 hidden sm:block">
                 Data Hypernet &amp; Tachyon • Zona Waktu: Asia/Jakarta (UTC+7)
               </p>
             </div>
           </div>
 
           {/* Navigation Tabs between Dashboard & Master Toko */}
-          <nav className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
-            <span className="px-3.5 py-1.5 text-xs font-bold bg-white text-blue-700 shadow-xs rounded-lg flex items-center gap-1.5">
+          <nav className="flex items-center bg-slate-100 p-0.5 sm:p-1 rounded-xl border border-slate-200/80 order-3 sm:order-none w-full sm:w-auto">
+            <span className="flex-1 sm:flex-none text-center px-2.5 sm:px-3.5 py-1.5 text-xs font-bold bg-white text-blue-700 shadow-xs rounded-lg flex items-center justify-center gap-1.5">
               <Wifi className="w-3.5 h-3.5" />
-              <span>Dashboard Rekap</span>
+              <span>Dashboard</span>
             </span>
             <Link
               href="/stores"
-              className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg transition-colors flex items-center gap-1.5"
+              className="flex-1 sm:flex-none text-center px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg transition-colors flex items-center justify-center gap-1.5"
             >
               <Store className="w-3.5 h-3.5" />
               <span>Master Toko</span>
             </Link>
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Kelola Data Tarikan (Section 6b) */}
             <button
               onClick={() => {
@@ -1801,11 +1802,11 @@ export default function HomePage() {
                 setDeleteEndDate(endDate);
                 setShowManageModal(true);
               }}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/70 px-3 py-1.5 rounded-xl transition-colors cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1 sm:gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/70 px-2 sm:px-3 py-1.5 rounded-xl transition-colors cursor-pointer shadow-2xs"
               title="Kelola Data Tarikan & Kapasitas Database"
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
-              <span>Kelola Data</span>
+              <span className="hidden sm:inline">Kelola Data</span>
             </button>
 
             {/* Logout */}
@@ -1823,26 +1824,26 @@ export default function HomePage() {
       {/* Main Content Area */}
       <main className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 w-full space-y-5">
         {/* ACTION BAR: Title, Presets, Date Selector, Buttons */}
-        <section className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <section className="bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-5 shadow-xs space-y-3 sm:space-y-4">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 sm:gap-4">
             {/* Left: Judul & Bulan Acuan */}
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                  Rekap Pengguna Akses Free WiFi — {fullMonthTitle}
+                <h2 className="text-base sm:text-xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                  Rekap Free WiFi — {fullMonthTitle}
                 </h2>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Data tabel difilter sesuai tanggal terpilih. Kolom SUM &amp; AVG serta 5 Kartu ringkasan mengacu pada periode bulanan {fullMonthTitle}.
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">
+                Kolom SUM &amp; AVG serta 5 Kartu mengacu pada periode bulanan {fullMonthTitle}.
               </p>
             </div>
 
             {/* Right: Tombol Tarik Data & Action Exports */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowSyncModal(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-xl text-xs shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                className="px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Tarik Data</span>
@@ -1853,7 +1854,7 @@ export default function HomePage() {
                 onClick={handleExportExcel}
                 disabled={isExportingExcel || !dbData}
                 title="Unduh rekap lengkap (.xlsx) dengan Sheet Dashboard & Tarikan Mentahan"
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white font-semibold rounded-xl text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3 sm:px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white font-semibold rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 {isExportingExcel ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1867,8 +1868,8 @@ export default function HomePage() {
                 type="button"
                 onClick={handleCopyImage}
                 disabled={isCopyingImage || !dbData}
-                title="Salin gambar rekap (kartu + tabel) ke clipboard untuk ditempel langsung (Ctrl+V) ke WhatsApp"
-                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-semibold rounded-xl text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 border border-slate-200"
+                title="Salin gambar rekap ke clipboard untuk WhatsApp"
+                className="px-3 sm:px-3.5 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-semibold rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 border border-slate-200"
               >
                 {isCopyingImage ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
@@ -1882,8 +1883,8 @@ export default function HomePage() {
                 type="button"
                 onClick={handleDownloadPng}
                 disabled={isDownloadingPng || !dbData}
-                title="Unduh gambar rekap (.png). Kirim sebagai dokumen di WhatsApp agar gambar tidak terkompresi"
-                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-semibold rounded-xl text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 border border-slate-200"
+                title="Unduh gambar rekap (.png)"
+                className="px-3 sm:px-3.5 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-semibold rounded-xl text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 border border-slate-200"
               >
                 {isDownloadingPng ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
@@ -1896,64 +1897,34 @@ export default function HomePage() {
           </div>
 
           {/* Date Range Selector & Shortcuts Bar */}
-          <div className="pt-3 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-            {/* Quick Presets */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-slate-500 font-semibold mr-1">TAMPILAN:</span>
-              <button
-                type="button"
-                onClick={() => handlePreset('today')}
-                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer"
-              >
-                Hari Ini
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePreset('threeDays')}
-                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer"
-              >
-                3 Hari
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePreset('fiveDays')}
-                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer"
-              >
-                5 Hari
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePreset('sevenDays')}
-                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer"
-              >
-                7 Hari
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePreset('thisMonth')}
-                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer"
-              >
-                Bulan Ini
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePreset('lastMonth')}
-                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer"
-              >
-                Bulan Lalu
-              </button>
+          <div className="pt-2 sm:pt-3 border-t border-slate-100 flex flex-col gap-2.5 text-xs">
+            {/* Quick Presets — horizontal scroll on mobile */}
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 font-semibold shrink-0">TAMPILAN:</span>
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                {(['today','threeDays','fiveDays','sevenDays','thisMonth','lastMonth'] as const).map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => handlePreset(preset)}
+                    className="shrink-0 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer"
+                  >
+                    {preset === 'today' ? 'Hari Ini' : preset === 'threeDays' ? '3 Hari' : preset === 'fiveDays' ? '5 Hari' : preset === 'sevenDays' ? '7 Hari' : preset === 'thisMonth' ? 'Bulan Ini' : 'Bulan Lalu'}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Date Pickers */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 w-full sm:w-auto">
+                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <input
                   type="date"
                   value={startDate}
                   max={todayJakarta}
                   onChange={(e) => handleApplyDateRange(e.target.value, endDate)}
-                  className="bg-transparent text-slate-800 text-xs focus:outline-none cursor-pointer"
+                  className="bg-transparent text-slate-800 text-xs focus:outline-none cursor-pointer flex-1 min-w-0"
                 />
                 <span className="text-slate-400 font-medium">s/d</span>
                 <input
@@ -1962,7 +1933,7 @@ export default function HomePage() {
                   min={startDate}
                   max={todayJakarta}
                   onChange={(e) => handleApplyDateRange(startDate, e.target.value)}
-                  className="bg-transparent text-slate-800 text-xs focus:outline-none cursor-pointer"
+                  className="bg-transparent text-slate-800 text-xs focus:outline-none cursor-pointer flex-1 min-w-0"
                 />
               </div>
 
@@ -1970,7 +1941,7 @@ export default function HomePage() {
                 type="button"
                 onClick={handleRefreshClick}
                 disabled={loadingData}
-                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs border border-slate-200/70"
+                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs border border-slate-200/70 w-full sm:w-auto justify-center sm:justify-start"
                 title="Segarkan data dari database"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingData ? 'animate-spin text-blue-600' : ''}`} />
@@ -2011,39 +1982,41 @@ export default function HomePage() {
         )}
 
         {/* FILTER BAR — di luar area capture gambar, tidak ikut di-screenshot */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs px-4 py-3">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs px-3 sm:px-4 py-3">
+          <div className="flex flex-col gap-2.5 text-xs">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
               <div className="relative">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari toko / kode..."
-                  className="w-52 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full sm:w-52 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
               </div>
-              <select
-                value={selectedAm}
-                onChange={(e) => setSelectedAm(e.target.value)}
-                className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-              >
-                <option value="">Semua AM</option>
-                {amList.map((am) => (
-                  <option key={am} value={am}>AM: {am}</option>
-                ))}
-              </select>
-              <select
-                value={selectedAc}
-                onChange={(e) => setSelectedAc(e.target.value)}
-                className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-              >
-                <option value="">Semua AC</option>
-                {acList.map((ac) => (
-                  <option key={ac} value={ac}>AC: {ac}</option>
-                ))}
-              </select>
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                <select
+                  value={selectedAm}
+                  onChange={(e) => setSelectedAm(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="">Semua AM</option>
+                  {amList.map((am) => (
+                    <option key={am} value={am}>AM: {am}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedAc}
+                  onChange={(e) => setSelectedAc(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="">Semua AC</option>
+                  {acList.map((ac) => (
+                    <option key={ac} value={ac}>AC: {ac}</option>
+                  ))}
+                </select>
+              </div>
               <label className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -2054,7 +2027,7 @@ export default function HomePage() {
                 <span className="text-slate-600 font-medium text-[11px]">Tampilkan Nonaktif</span>
               </label>
             </div>
-            <div className="text-slate-500 text-[11px] font-medium flex items-center gap-2 shrink-0">
+            <div className="text-slate-500 text-[11px] font-medium flex items-center gap-2">
               <span>
                 Menampilkan <strong className="text-slate-900">{sortedRows.length}</strong> dari {tableRows.length} toko
               </span>
@@ -2158,6 +2131,10 @@ export default function HomePage() {
 
           {/* BAGIAN 1 — TABEL REKAP TOKO (Section 6) */}
           <section className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+            {/* Mobile Swipe Hint */}
+            <div className="sm:hidden px-3 py-1.5 bg-blue-50 border-b border-blue-100 text-[11px] text-blue-700 flex items-center gap-1.5 font-medium">
+              <span>👉 Geser ke kanan untuk melihat semua kolom tanggal</span>
+            </div>
             {/* Scrollable Table View with Sticky Columns */}
             <div className="overflow-x-auto max-h-[680px] relative table-scroll-wrapper">
               <table className="w-full text-left text-xs text-slate-700 border-collapse">
@@ -2167,11 +2144,11 @@ export default function HomePage() {
                     <th
                       scope="col"
                       onClick={() => handleSort('kd_store')}
-                      className="py-3 px-3.5 w-24 sticky left-0 z-30 bg-slate-50 border-r border-slate-200/80 cursor-pointer hover:bg-slate-100 select-none"
+                      className="py-3 px-2 sm:px-3.5 w-14 sm:w-24 sticky left-0 z-30 bg-slate-50 border-r border-slate-200/80 cursor-pointer hover:bg-slate-100 select-none"
                     >
                       <div className="flex items-center justify-between gap-1">
-                        <span>Kd Store</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                        <span>Kd</span>
+                        <ArrowUpDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-400" />
                       </div>
                     </th>
 
@@ -2179,11 +2156,11 @@ export default function HomePage() {
                     <th
                       scope="col"
                       onClick={() => handleSort('display_name')}
-                      className="py-3 px-4 min-w-[260px] max-w-[320px] sticky left-24 z-30 bg-slate-50 border-r border-slate-200/80 cursor-pointer hover:bg-slate-100 select-none shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]"
+                      className="py-3 px-2 sm:px-4 min-w-[130px] sm:min-w-[260px] max-w-[160px] sm:max-w-[320px] sticky left-14 sm:left-24 z-30 bg-slate-50 border-r border-slate-200/80 cursor-pointer hover:bg-slate-100 select-none shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]"
                     >
                       <div className="flex items-center justify-between gap-1">
-                        <span>Organisation</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                        <span>Toko</span>
+                        <ArrowUpDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-400" />
                       </div>
                     </th>
 
@@ -2299,12 +2276,12 @@ export default function HomePage() {
                         className="hover:bg-slate-50/90 transition-colors bg-white group"
                       >
                         {/* Sticky Col 1: Kd Store */}
-                        <td className="py-2.5 px-3.5 font-mono text-slate-600 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-r border-slate-200/80 text-xs">
+                        <td className="py-2 sm:py-2.5 px-2 sm:px-3.5 font-mono text-slate-600 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-r border-slate-200/80 text-[11px] sm:text-xs w-14 sm:w-24">
                           {row.kd_store || '-'}
                         </td>
 
                         {/* Sticky Col 2: Organisation */}
-                        <td className="py-2.5 px-4 font-semibold text-slate-900 sticky left-24 z-10 bg-white group-hover:bg-slate-50 border-r border-slate-200/80 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] truncate max-w-[320px]">
+                        <td className="py-2 sm:py-2.5 px-2 sm:px-4 font-semibold text-slate-900 sticky left-14 sm:left-24 z-10 bg-white group-hover:bg-slate-50 border-r border-slate-200/80 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] truncate max-w-[160px] sm:max-w-[320px]">
                           <div className="flex items-center gap-1.5 truncate">
                             <span className="truncate">{row.display_name}</span>
                             {!row.active && (
@@ -2373,10 +2350,10 @@ export default function HomePage() {
                 {sortedRows.length > 0 && (
                   <tfoot className="bg-slate-100 border-t-2 border-slate-300 font-bold text-slate-900 sticky bottom-0 z-20 text-xs">
                     <tr>
-                      <td className="py-3 px-3.5 sticky left-0 z-30 bg-slate-100 border-r border-slate-300">
-                        TOTAL
+                      <td className="py-2 sm:py-3 px-2 sm:px-3.5 sticky left-0 z-30 bg-slate-100 border-r border-slate-300 w-14 sm:w-24">
+                        TOT
                       </td>
-                      <td className="py-3 px-4 sticky left-24 z-30 bg-slate-100 border-r border-slate-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]">
+                      <td className="py-2 sm:py-3 px-2 sm:px-4 sticky left-14 sm:left-24 z-30 bg-slate-100 border-r border-slate-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]">
                         {sortedRows.length} Toko
                       </td>
                       <td className="py-3 px-3 text-center text-slate-400">-</td>
