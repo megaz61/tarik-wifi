@@ -1134,7 +1134,7 @@ export async function cleanupExpiredSyncSessions(): Promise<void> {
 
 /**
  * =========================================================================
- * SCHEDULER RETENSI DATA (Setiap 14 hari hapus 7 hari terlama dari MIN tanggal)
+ * SCHEDULER RETENSI DATA (Setiap 6 bulan / 180 hari hapus 180 hari terlama dari MIN tanggal)
  * =========================================================================
  */
 
@@ -1173,9 +1173,9 @@ export async function getLastSuccessfulAutoClean(): Promise<AutoCleanLog | null>
 
 /**
  * Jalankan scheduler retensi data:
- * 1. Setiap 14 hari.
+ * 1. Setiap 6 bulan (180 hari).
  * 2. Menggunakan lock database agar restart/eksekusi ganda tidak menghapus berulang.
- * 3. Menghapus data lokal dari 7 hari paling lama berdasarkan MIN(date) yang benar-benar ada di database.
+ * 3. Menghapus data lokal dari 180 hari paling lama berdasarkan MIN(date) yang benar-benar ada di database.
  * 4. Hapus hanya data yang masuk kebijakan retensi (data yang melebihi batas kelola aplikasi 93 hari).
  * 5. Mencatat waktu, rentang, jumlah terhapus, dan status ke auto_clean_logs.
  */
@@ -1238,18 +1238,19 @@ export async function runAutoRetentionCleanup(options?: {
   }
 
   try {
-    // 2. Cek interval 14 hari sejak eksekusi sukses terakhir
+    // 2. Cek interval 180 hari (6 bulan) sejak eksekusi sukses terakhir
+    const RETENTION_INTERVAL_DAYS = 180;
     const lastSuccess = await getLastSuccessfulAutoClean();
     if (lastSuccess && !options?.force) {
       const lastTime = new Date(lastSuccess.executed_at).getTime();
       const diffDays = (nowMs - lastTime) / (1000 * 86400);
-      if (diffDays < 14) {
+      if (diffDays < RETENTION_INTERVAL_DAYS) {
         return {
           executed: false,
           status: 'SKIPPED',
           deletedStats: 0,
           deletedKpi: 0,
-          message: `Scheduler belum mencapai interval 14 hari (terakhir sukses ${diffDays.toFixed(1)} hari yang lalu pada ${lastSuccess.executed_at}).`,
+          message: `Scheduler belum mencapai interval 6 bulan / 180 hari (terakhir sukses ${diffDays.toFixed(1)} hari yang lalu pada ${lastSuccess.executed_at}).`,
         };
       }
     }
@@ -1285,11 +1286,11 @@ export async function runAutoRetentionCleanup(options?: {
     cutoffDateObj.setUTCDate(cutoffDateObj.getUTCDate() - MAX_DATE_RANGE_DAYS);
     const retentionCutoff = cutoffDateObj.toISOString().slice(0, 10);
 
-    // Ambil 7 hari paling lama yang benar-benar ada di daily_store_stats
+    // Ambil 180 hari paling lama yang benar-benar ada di daily_store_stats
     let candidateDatesQuery = `
       SELECT DISTINCT date FROM daily_store_stats
       ORDER BY date ASC
-      LIMIT 7;
+      LIMIT 180;
     `;
     let candidateRes = await db.execute(candidateDatesQuery);
     let candidateDates = candidateRes.rows.map((r) => String(r.date));
@@ -1339,7 +1340,7 @@ export async function runAutoRetentionCleanup(options?: {
     const dateStart = candidateDates[0];
     const dateEnd = candidateDates[candidateDates.length - 1];
 
-    // 5. Hapus 7 hari terlama tersebut hanya di daily_store_stats dan kpi_cache
+    // 5. Hapus 180 hari terlama tersebut hanya di daily_store_stats dan kpi_cache
     // DILARANG MENYENTUH stores dan store_assignments
     const delRes = await deleteDailyStatsAndKpi(dateStart, dateEnd);
 

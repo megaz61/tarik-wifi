@@ -23,6 +23,10 @@ import {
   Eye,
   EyeOff,
   ShieldCheck,
+  FileSpreadsheet,
+  Upload,
+  X,
+  Clock,
 } from 'lucide-react';
 import { formatMonthHeader, getJakartaToday } from '@/lib/constants';
 
@@ -92,6 +96,35 @@ export default function MasterTokoPage() {
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [prevMonthToCopy, setPrevMonthToCopy] = useState('');
   const [isCopying, setIsCopying] = useState(false);
+
+  // Import Excel modal state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importMonth, setImportMonth] = useState<string>('2026-10');
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<null | {
+    fileName: string;
+    sheets: { name: string; headerRow: number; rowCount: number }[];
+    totalFound: number;
+    matchedCount: number;
+    activeInMonthCount: number;
+    futureActiveCount: number;
+    unmatchedCount: number;
+    preview: {
+      kd_store: string;
+      nama_store_excel: string;
+      nama_store_db: string | null;
+      ac: string | null;
+      am: string | null;
+      matched: boolean;
+      activeInMonth: boolean;
+      activation_date: string | null;
+      store_id: string | null;
+    }[];
+  }>(null);
+  const [importLoading, setImportLoading] = useState<'idle' | 'parsing' | 'saving'>('idle');
+  const [importFilter, setImportFilter] = useState<'active' | 'future' | 'all' | 'unmatched'>('active');
+  const [importSaveScope, setImportSaveScope] = useState<'activeOnly' | 'allMatched'>('activeOnly');
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   // Toast notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -250,6 +283,65 @@ export default function MasterTokoPage() {
         setSaveStatusMap((prev) => ({ ...prev, [assignKey]: 'error' }));
       }
     }, 500);
+  };
+
+  // Import Excel: parse (preview mode)
+  const handleImportPreview = async (file: File, targetMonth?: string) => {
+    setImportLoading('parsing');
+    setImportPreview(null);
+    const monthToUse = targetMonth || importMonth || selectedMonth;
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('month', monthToUse);
+      fd.append('mode', 'preview');
+      const res = await fetch('/api/stores/import-excel', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.success) {
+        setImportPreview(data);
+      } else {
+        showToast(`❌ ${data.error || 'Gagal memproses file Excel.'}`);
+        setShowImportModal(false);
+      }
+    } catch (e: any) {
+      showToast(`❌ Error: ${e.message}`);
+      setShowImportModal(false);
+    } finally {
+      setImportLoading('idle');
+    }
+  };
+
+  // Import Excel: save
+  const handleImportSave = async () => {
+    if (!importFile || !importPreview) return;
+    setImportLoading('saving');
+    const monthToUse = importMonth || selectedMonth;
+    try {
+      const fd = new FormData();
+      fd.append('file', importFile);
+      fd.append('month', monthToUse);
+      fd.append('mode', 'save');
+      fd.append('saveScope', importSaveScope);
+      const res = await fetch('/api/stores/import-excel', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || `Berhasil menyimpan ${data.savedCount} penugasan AM/AC dari Excel untuk bulan ${monthToUse}.`);
+        setShowImportModal(false);
+        setImportPreview(null);
+        setImportFile(null);
+        if (monthToUse !== selectedMonth) {
+          handleMonthChange(monthToUse);
+        } else {
+          loadStoresData(monthToUse);
+        }
+      } else {
+        showToast(`❌ ${data.error || 'Gagal menyimpan data.'}`);
+      }
+    } catch (e: any) {
+      showToast(`❌ Error: ${e.message}`);
+    } finally {
+      setImportLoading('idle');
+    }
   };
 
   // Copy from Previous Month Execution
@@ -509,6 +601,23 @@ export default function MasterTokoPage() {
               >
                 <Copy className="w-3.5 h-3.5 text-slate-300" />
                 <span>Salin Bulan Sebelumnya</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setImportMonth(selectedMonth);
+                  setImportPreview(null);
+                  setImportFile(null);
+                  setImportFilter('active');
+                  setImportSaveScope('activeOnly');
+                  setShowImportModal(true);
+                }}
+                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-xl text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                title="Import AM & AC dari file Excel Struktur Nasional"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-100" />
+                <span>Import dari Excel</span>
               </button>
             </div>
           </div>
@@ -1071,6 +1180,358 @@ export default function MasterTokoPage() {
               >
                 Selesai
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL: Import dari Excel ===================== */}
+      {showImportModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+          onClick={(e) => { if (e.target === e.currentTarget && importLoading === 'idle') { setShowImportModal(false); setImportPreview(null); setImportFile(null); } }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">Import AM/AC dari Excel</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Bulan target: <strong className="text-emerald-700 font-bold">{formatMonthHeader(importMonth)} ({importMonth})</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { if (importLoading === 'idle') { setShowImportModal(false); setImportPreview(null); setImportFile(null); } }}
+                disabled={importLoading !== 'idle'}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Selector Bulan Target Import */}
+              <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      Pilih Bulan Target Penugasan AM / AC
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Data AM &amp; AC dari file Excel akan disimpan khusus untuk periode bulan yang Anda tentukan di sini.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <input
+                    type="month"
+                    value={importMonth}
+                    onChange={(e) => {
+                      if (e.target.value) setImportMonth(e.target.value);
+                    }}
+                    disabled={importLoading === 'saving'}
+                    className="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <span className="text-xs font-bold px-3 py-1.5 bg-emerald-600 text-white rounded-xl whitespace-nowrap shadow-2xs">
+                    {formatMonthHeader(importMonth)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Step 1: Upload file */}
+              {!importPreview && (
+                <div className="space-y-4">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-xs text-emerald-800 space-y-1.5">
+                    <p className="font-bold">📋 Cara kerja import:</p>
+                    <ul className="list-disc list-inside space-y-0.5 text-emerald-700">
+                      <li>Pilih <strong>Bulan Target</strong> di atas sesuai periode penugasan yang diinginkan.</li>
+                      <li>Upload file Excel Struktur Nasional (semua format/bulan didukung).</li>
+                      <li>Sistem otomatis mencari kolom: <strong>KD STORE, AREA COORDINATOR (AC), AREA MANAGER (AM)</strong>.</li>
+                      <li>Pencocokan dilakukan berdasarkan <strong>Kd Store</strong> terhadap database toko.</li>
+                      <li>Preview ditampilkan — hanya data yang matched yang akan disimpan ke bulan target.</li>
+                    </ul>
+                  </div>
+
+                  <div
+                    className="border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center gap-3 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/30 transition-colors"
+                    onClick={() => importFileRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const f = e.dataTransfer.files[0];
+                      if (f) {
+                        setImportFile(f);
+                        handleImportPreview(f);
+                      }
+                    }}
+                  >
+                    <input
+                      ref={importFileRef}
+                      type="file"
+                      accept=".xlsx,.xls"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) {
+                          setImportFile(f);
+                          handleImportPreview(f);
+                        }
+                      }}
+                    />
+                    {importLoading === 'parsing' ? (
+                      <>
+                        <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin" />
+                        <p className="text-sm font-semibold text-emerald-700">Membaca dan menganalisis Excel...</p>
+                        <p className="text-xs text-slate-500">Ini mungkin memakan waktu beberapa detik</p>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 text-slate-400" />
+                        <p className="text-sm font-semibold text-slate-700">Klik atau seret file Excel ke sini</p>
+                        <p className="text-xs text-slate-400">.xlsx / .xls — Struktur Nasional</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Preview hasil parsing */}
+              {importPreview && (
+                <div className="space-y-4">
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                      <span className="text-blue-700 block text-[11px] font-medium">Bulan Target</span>
+                      <strong className="text-blue-900 text-sm block truncate">{formatMonthHeader(importMonth)}</strong>
+                    </div>
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                      <span className="text-emerald-700 block text-[11px] font-medium">Aktif Free WiFi</span>
+                      <strong className="text-emerald-900 text-base">{importPreview.activeInMonthCount}</strong> toko
+                    </div>
+                    {importPreview.futureActiveCount > 0 && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <span className="text-amber-700 block text-[11px] font-medium">Belum Aktif WiFi</span>
+                        <strong className="text-amber-900 text-base">{importPreview.futureActiveCount}</strong> toko
+                      </div>
+                    )}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                      <span className="text-slate-500 block text-[11px] font-medium">Total Cocok di DB</span>
+                      <strong className="text-slate-800 text-base">{importPreview.matchedCount}</strong> toko
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                      <span className="text-slate-400 block text-[11px] font-medium">Di Luar DB</span>
+                      <strong className="text-slate-500 text-base">{importPreview.unmatchedCount}</strong> toko
+                    </div>
+                  </div>
+
+                  {/* Sheets info */}
+                  <div className="flex flex-wrap gap-2">
+                    {importPreview.sheets.map((s) => (
+                      <span key={s.name} className="text-[11px] bg-blue-50 border border-blue-200 text-blue-800 px-2.5 py-1 rounded-lg font-medium">
+                        📄 {s.name} · Baris header: {s.headerRow} · {s.rowCount} baris data
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Filter toggle */}
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-slate-500 font-medium">Tampilkan:</span>
+                    <button
+                      type="button"
+                      onClick={() => setImportFilter('active')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer ${
+                        importFilter === 'active'
+                          ? 'bg-emerald-700 text-white shadow-2xs'
+                          : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                      }`}
+                    >
+                      ✅ Aktif WiFi ({importPreview.activeInMonthCount})
+                    </button>
+                    {importPreview.futureActiveCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setImportFilter('future')}
+                        className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer ${
+                          importFilter === 'future'
+                            ? 'bg-amber-600 text-white shadow-2xs'
+                            : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                        }`}
+                      >
+                        ⏳ Belum Aktif WiFi ({importPreview.futureActiveCount})
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setImportFilter('all')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer ${
+                        importFilter === 'all'
+                          ? 'bg-slate-800 text-white shadow-2xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      Semua ({importPreview.totalFound})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImportFilter('unmatched')}
+                      className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer ${
+                        importFilter === 'unmatched'
+                          ? 'bg-slate-800 text-white shadow-2xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      Di Luar DB ({importPreview.unmatchedCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setImportPreview(null); setImportFile(null); if (importFileRef.current) importFileRef.current.value = ''; }}
+                      className="ml-auto text-slate-400 hover:text-slate-600 text-[11px] underline cursor-pointer"
+                    >
+                      Ganti file
+                    </button>
+                  </div>
+
+                  {/* Preview table */}
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-50 text-slate-600 text-[11px] font-semibold">
+                        <tr>
+                          <th className="px-3 py-2.5 text-left w-8">Status</th>
+                          <th className="px-3 py-2.5 text-left">Kd Store</th>
+                          <th className="px-3 py-2.5 text-left">Nama (Excel)</th>
+                          <th className="px-3 py-2.5 text-left">Nama (DB) &amp; Status WiFi</th>
+                          <th className="px-3 py-2.5 text-left">AM</th>
+                          <th className="px-3 py-2.5 text-left">AC</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {importPreview.preview
+                          .filter((r) => {
+                            if (importFilter === 'active') return r.matched && r.activeInMonth;
+                            if (importFilter === 'future') return r.matched && !r.activeInMonth;
+                            if (importFilter === 'unmatched') return !r.matched;
+                            return true;
+                          })
+                          .map((row) => (
+                            <tr
+                              key={row.kd_store}
+                              className={
+                                !row.matched
+                                  ? 'bg-slate-50/50 hover:bg-slate-100/70'
+                                  : row.activeInMonth
+                                  ? 'bg-white hover:bg-emerald-50/30'
+                                  : 'bg-amber-50/40 hover:bg-amber-50/70'
+                              }
+                            >
+                              <td className="px-3 py-2 text-center">
+                                {!row.matched ? (
+                                  <AlertCircle className="w-3.5 h-3.5 text-slate-400 mx-auto" />
+                                ) : row.activeInMonth ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mx-auto" />
+                                ) : (
+                                  <Clock className="w-3.5 h-3.5 text-amber-500 mx-auto" />
+                                )}
+                              </td>
+                              <td className="px-3 py-2 font-mono font-bold text-slate-800">{row.kd_store}</td>
+                              <td className="px-3 py-2 text-slate-600 max-w-[160px] truncate">{row.nama_store_excel || '—'}</td>
+                              <td className="px-3 py-2 max-w-[200px] truncate">
+                                {row.matched ? (
+                                  <div className="flex flex-col">
+                                    <span className="text-slate-800 font-bold truncate">{row.nama_store_db}</span>
+                                    {row.activeInMonth ? (
+                                      <span className="text-[10px] text-emerald-700 font-bold">✓ Aktif Free WiFi</span>
+                                    ) : (
+                                      <span className="text-[10px] text-amber-700 font-semibold">⏳ WiFi baru aktif {row.activation_date}</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400 italic">Bukan toko Free WiFi</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-slate-700">{row.am || <span className="text-slate-300">—</span>}</td>
+                              <td className="px-3 py-2 text-slate-700">{row.ac || <span className="text-slate-300">—</span>}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                    {importPreview.preview.filter((r) => {
+                      if (importFilter === 'active') return r.matched && r.activeInMonth;
+                      if (importFilter === 'future') return r.matched && !r.activeInMonth;
+                      if (importFilter === 'unmatched') return !r.matched;
+                      return true;
+                    }).length === 0 && (
+                      <div className="py-6 text-center text-xs text-slate-400">Tidak ada data untuk filter ini.</div>
+                    )}
+                  </div>
+
+                  {importPreview.futureActiveCount > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-900 space-y-1">
+                      <p className="font-bold">ℹ️ Informasi Pemasangan Free WiFi:</p>
+                      <p className="text-[11px] text-blue-800">
+                        Dari {importPreview.matchedCount} toko yang cocok, sebanyak <strong>{importPreview.activeInMonthCount} toko</strong> sudah aktif Free WiFi pada {formatMonthHeader(importMonth)}. Sedangkan <strong>{importPreview.futureActiveCount} toko</strong> lainnya gerai fisiknya sudah ada, namun perangkat Free WiFi-nya baru dipasang dan aktif di bulan berikutnya.
+                      </p>
+                    </div>
+                  )}
+
+                  {importPreview.unmatchedCount > 0 && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] text-slate-500">
+                      <strong>Catatan:</strong> {importPreview.unmatchedCount} toko di file Excel tidak tersimpan karena bukan merupakan toko Free WiFi Lawson.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer actions */}
+            <div className="px-5 py-4 border-t border-slate-100 shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => { if (importLoading === 'idle') { setShowImportModal(false); setImportPreview(null); setImportFile(null); } }}
+                  disabled={importLoading !== 'idle'}
+                  className="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                {importPreview && importPreview.futureActiveCount > 0 && (
+                  <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none font-medium">
+                    <input
+                      type="checkbox"
+                      checked={importSaveScope === 'allMatched'}
+                      onChange={(e) => setImportSaveScope(e.target.checked ? 'allMatched' : 'activeOnly')}
+                      className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <span>Sertakan juga {importPreview.futureActiveCount} toko yang belum aktif WiFi</span>
+                  </label>
+                )}
+              </div>
+              {importPreview && (
+                <button
+                  type="button"
+                  onClick={handleImportSave}
+                  disabled={importLoading !== 'idle' || (importSaveScope === 'activeOnly' ? importPreview.activeInMonthCount === 0 : importPreview.matchedCount === 0)}
+                  className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {importLoading === 'saving' ? (
+                    <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Menyimpan...</>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Simpan {importSaveScope === 'activeOnly' ? importPreview.activeInMonthCount : importPreview.matchedCount} Toko ke Bulan {formatMonthHeader(importMonth)}
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
