@@ -10,10 +10,10 @@
 1. [Gambaran Umum](#1-gambaran-umum)
 2. [Cara Kerja dari Awal sampai Akhir](#2-cara-kerja-dari-awal-sampai-akhir)
 3. [Peta File Penting](#3-peta-file-penting)
-4. [Koneksi ke Vendor](#4-koneksi-ke-vendor)
-5. [Penyimpanan Data](#5-penyimpanan-data)
+4. [Koneksi ke Vendor (API & Network DevTools)](#4-koneksi-ke-vendor)
+5. [Penyimpanan Data & Logika Toko (Filter 40 vs 27 vs 17 Toko)](#5-penyimpanan-data--logika-toko)
 6. [Konfigurasi dan Deploy](#6-konfigurasi-dan-deploy)
-7. [Masalah Umum dan Cara Mengeceknya](#7-masalah-umum-dan-cara-mengeceknya)
+7. [Masalah Umum dan Tanya Jawab (FAQ)](#7-masalah-umum-dan-tanya-jawab-faq)
 8. [Glosarium](#8-glosarium)
 
 ---
@@ -191,7 +191,23 @@ Penjamin keamanan ini ada di [`lib/vendorGuard.ts`](lib/vendorGuard.ts) — seti
 
 ---
 
-### 4.1 Vendor: Hypernet (`portal.openwifi.id`)
+### 4.1 Dari Mana API Ini Didapatkan? (Hasil Inspect Network DevTools)
+
+Semua endpoint API vendor di bawah ini didapatkan dari hasil **Inspect Element (tab Network di Chrome DevTools)** saat membuka website resmi kedua vendor dari halaman login hingga tabel data toko terbuka:
+
+1. **Bagaimana cara kerjanya saat di-inspect?**
+   - Saat login di website portal vendor, tab Network merekam request `POST` autentikasi yang mengirimkan username & password.
+   - Saat halaman tabel/dasbor vendor terbuka, tab Network merekam request `GET` yang meminta data tabel toko (berisi nama toko, user count, transfer bytes, durasi) serta 4 kartu KPI footfall/metrics.
+   - Semua URL, parameter tanggal, header organisasi, serta respon JSON tersebut kemudian dipindahkan dan diimplementasikan ke dalam kode backend kita di [`lib/hypernet.ts`](lib/hypernet.ts) dan [`lib/tachyon.ts`](lib/tachyon.ts).
+
+2. **Kenapa API vendor tidak ditembak langsung dari browser pengguna?**
+   - **Masalah CORS (Cross-Origin Resource Sharing)**: Browser melarang aplikasi web memanggil langsung domain luar (`portal.openwifi.id` atau `tachyon.net.id`) tanpa izin server tujuan.
+   - **Keamanan Password**: Jika dipanggil dari browser pengguna, password akun vendor akan terlihat oleh siapa pun yang membuka inspect browser.
+   - **Solusi**: Tombol "Tarik Data" di browser hanya memanggil API internal kita (`/api/sync/...`). Lalu server backend Next.js kita bertindak sebagai robot pengambil data yang aman di balik layar.
+
+---
+
+### 4.2 Vendor: Hypernet (`portal.openwifi.id`)
 
 #### File dan Fungsi yang Terlibat
 
@@ -270,7 +286,7 @@ Respons: { "value": "1234" }
 
 ---
 
-### 4.2 Vendor: Tachyon (`lawson-api.tachyon.net.id`)
+### 4.3 Vendor: Tachyon (`lawson-api.tachyon.net.id`)
 
 #### File dan Fungsi yang Terlibat
 
@@ -345,7 +361,7 @@ Respons: { "data": { "new": 980, "returning": 1240, "total": 2220 } }
 
 ---
 
-## 5. Penyimpanan Data
+## 5. Penyimpanan Data & Logika Toko
 
 ### Di mana data disimpan?
 
@@ -380,11 +396,65 @@ Saat data ditarik dari vendor, sistem menggunakan strategi **upsert** — artiny
 
 Ini memastikan data selalu up-to-date meski Tarik Data dilakukan berkali-kali untuk tanggal yang sama. Fungsinya ada di `lib/db.ts`, fungsi `upsertDailyStoreStats()`.
 
-### Pendaftaran Toko Baru Otomatis
+### Pendaftaran Toko Baru Otomatis & Cara Melengkapinya
 
-Setiap kali data ditarik, semua nama/ID toko yang dikembalikan vendor **otomatis didaftarkan** ke tabel `stores` jika belum ada. Ini dilakukan oleh fungsi `autoRegisterStores()` di `lib/db.ts`.
+Saat Anda menekan tombol "Tarik Data", sistem secara otomatis memeriksa apakah ada toko baru di vendor:
 
-Namun toko baru yang tidak ada dalam **daftar 27 toko acuan** (`REFERENCE_27_STORES` di `lib/db.ts`, baris 968–996) akan **langsung tersembunyi** (`is_visible = 0`) dan tidak tampil di dasbor utama, sampai diaktifkan secara manual di halaman Master Toko.
+1. **Apakah toko baru otomatis ketarik?**
+   - **Ya, 100% otomatis!** Fungsi `autoRegisterStores()` di `lib/db.ts` akan langsung memasukkan toko baru ke tabel `stores`.
+   - Data trafik pengguna WiFi hariannya pun **langsung tersimpan** ke tabel `daily_store_stats`.
+
+2. **Bagaimana status awal toko baru tersebut?**
+   - **Visibilitas (`is_visible = 0`)**: Otomatis berstatus **Sembunyi**. Hal ini sengaja agar dasbor utama tidak langsung berantakan jika toko baru tersebut ternyata adalah toko uji coba, toko gudang, atau lokasi testing vendor.
+   - **Label Toko Baru (`is_new_flag = 1`)**: Diberi penanda khusus sehingga di halaman Master Toko akan muncul badge/label kuning bertuliskan **"Baru"**.
+   - **Kd Store, Tgl Aktivasi, AM, & AC**: Berstatus **kosong (`null`)**, karena API vendor memang tidak menyimpan kode toko internal Lawson maupun nama AM/AC.
+
+3. **Bagaimana cara mengubah dan melengkapinya?**
+   Buka halaman **Master Toko** (`/stores`). Ada dua cara:
+   - **Cara Manual**: Centang filter *"Toko Baru Saja"*, klik switch menjadi **Tampil**, ketik **Kd Store** (misal: `6AXX`), masukkan **Tanggal Aktivasi**, pilih **AM & AC**, lalu klik tombol kecil *"Hapus label baru"*.
+   - **Cara Semi-Otomatis (Import Excel)**: Cukup ketik **Kd Store** pada toko baru tersebut, lalu klik tombol **"Import Excel Struktur"** di pojok kanan atas dan unggah file Excel Struktur Nasional Lawson bulanan. Sistem akan secara otomatis mencari sheet **"MASTER"**, mencocokkan Kd Store, dan mengisi nama AM & AC secara serentak. Jika file tidak memiliki sheet `MASTER`, sistem akan langsung memunculkan notifikasi peringatan.
+
+### Logika Filter Toko Berbasis Waktu (Kenapa 40 di DB, 27 di Dasbor, 17 di Juni?)
+
+Sering muncul pertanyaan: *"Kenapa di database ada 40 toko, di dasbor bulan ini muncul 27 toko, tapi pas pilih bulan Juni yang muncul hanya 17 toko?"*
+
+Ini adalah **fitur filter pintar berbasis waktu** di `lib/storeAssignments.ts` (fungsi `isStoreEligibleForRange()`), agar data historis tetap akurat dan tidak memunculkan toko yang pada saat itu belum buka atau belum pasang WiFi:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    TOTAL TOKO DI DATABASE                       │
+│                           (40 Toko)                             │
+│   Seluruh data mentah yang pernah dikembalikan oleh API vendor  │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │ Difilter status "Tampil" (is_visible = 1)
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     TOKO PANTAUAN AKTIF                         │
+│                           (27 Toko)                             │
+│       Toko resmi Lawson yang statusnya diaktifkan di Master Toko │
+└─────────────────┬─────────────────────────────┬─────────────────┘
+                  │                             │
+    Pilih Bulan Berjalan (misal: Oktober)       │ Pilih Bulan Historis (misal: Juni)
+                  │                             │
+                  ▼                             ▼
+┌───────────────────────────────────┐ ┌───────────────────────────────────┐
+│          TAMPIL 27 TOKO           │ │          TAMPIL 17 TOKO           │
+│  Semua 27 toko sudah aktif dan    │ │  10 toko baru belum pasang WiFi   │
+│  tercatat di struktur organisasi. │ │  atau belum masuk struktur AM/AC  │
+└───────────────────────────────────┘ └───────────────────────────────────┘
+```
+
+Aturan pemeriksaannya terdiri dari 3 lapis:
+1. **Lapis 1 - Status Master Toko (`is_visible`)**:
+   Hanya toko berstatus "Tampil" yang boleh masuk dasbor (maksimal 27 toko). 13 toko lainnya disembunyikan.
+2. **Lapis 2 - Tanggal Aktivasi (`activation_date`)**:
+   Jika tanggal aktivasi toko berada setelah rentang tanggal yang dipilih (`activation_date > endDate`), toko otomatis disembunyikan karena pada tanggal tersebut WiFi memang belum terpasang di toko.
+   *Contoh:* Toko Cihampelas baru pasang WiFi tanggal 19 Agustus 2026. Saat membuka bulan Juni, toko ini otomatis tidak ditampilkan.
+3. **Lapis 3 - Riwayat Snapshot AM & AC (`referensi/am_ac_histori.tsv`)**:
+   Sistem mencatat kapan toko pertama kali masuk struktur pengawasan nasional:
+   - Snapshot paling awal adalah **Juli 2026** (yang juga berlaku untuk bulan-bulan historis sebelumnya seperti Juni). Pada masa ini, toko yang terpasang WiFi **persis ada 17 toko acuan**.
+   - Sebanyak **10 toko lainnya** (seperti *Cihampelas, Summarecon Serpong, Gili Sampeng, Purwakarta Rest Area 72A*, dll.) baru resmi beroperasi dan masuk struktur organisasi pada **Agustus, September, atau Oktober 2026**.
+   - Karena ke-10 toko tersebut baru ada di bulan Agustus ke atas, maka ketika dasbor diarahkan ke bulan Juni, ke-10 toko tersebut otomatis disembunyikan, menyisakan **17 toko** yang memang sah beroperasi pada bulan Juni.
 
 ### Retensi Data (Pembersihan Otomatis)
 
@@ -455,7 +525,7 @@ Logika pembersihan ada di `lib/db.ts`, fungsi `runAutoRetentionCleanup()`.
 
 ---
 
-## 7. Masalah Umum dan Cara Mengeceknya
+## 7. Masalah Umum dan Tanya Jawab (FAQ)
 
 ### 🔴 Data tidak muncul di dasbor
 
@@ -521,14 +591,48 @@ Logika pembersihan ada di `lib/db.ts`, fungsi `runAutoRetentionCleanup()`.
 
 ---
 
-### 🔴 Toko baru aktif WiFi tidak muncul di dasbor
+### 🔴 Import Excel gagal: "Tidak ada sheet 'MASTER' di dalam file Excel"
 
-Ini adalah perilaku yang disengaja. Lihat penjelasan lengkap di Bab 2 (Alur Tarik Data) dan Bab 5 (Pendaftaran Toko Baru Otomatis).
+**Penyebab:**
+Sistem sengaja mengunci pencarian data struktur hanya ke sheet bernama **`MASTER`** sebagai sumber resmi tunggal (*single source of truth*) struktur organisasi Lawson nasional. Hal ini untuk mencegah sistem salah membaca sheet lain yang berisi data sementara, pergantian struktur parsial, atau catatan internal lainnya.
 
-**Ringkasan solusi:**
-1. Lakukan Tarik Data → toko baru akan muncul di **Master Toko**.
-2. Di halaman Master Toko, aktifkan tombol tampil (ikon mata) untuk toko baru tersebut.
-3. Atau tambahkan toko ke daftar `REFERENCE_27_STORES` di `lib/db.ts` agar langsung tampil otomatis.
+**Solusi:**
+1. Pastikan file yang diunggah adalah file resmi **Struktur Nasional**.
+2. Buka file Excel tersebut dan periksa tab sheet di bagian bawah. Pastikan sheet utama struktur toko dinamai **`MASTER`** (huruf besar/kecil tidak masalah, misal `MASTER`, `Master`, atau `master`).
+3. Pastikan di dalam sheet `MASTER` tersebut terdapat kolom kode toko (`KD STORE`), nama toko (`NAMA STORE`), serta `AM` dan `AC`.
+
+---
+
+### ❓ Bagaimana cara kerja fitur Import Excel Struktur jika file memiliki banyak sheet?
+
+1. **Fokus Tunggal ke Sheet "MASTER"**: Meskipun file Excel Struktur Nasional memuat belasan sheet (*Pergantian Struktur*, *MDP AC*, *TOKO TUTUP*, dsb.), sistem secara otomatis **hanya membaca sheet "MASTER"**.
+2. **Pencarian Baris Judul Otomatis (Regex Fuzzy)**: Sistem tidak mengunci letak baris atau huruf kolom. Sistem memindai baris 1 s/d 30 pada sheet `MASTER` untuk menemukan kolom kode toko dan nama AM/AC.
+3. **Penyaringan Toko Free WiFi**: Dari ratusan toko nasional di sheet `MASTER`, sistem hanya mencocokkan kode toko dengan toko Free WiFi di database Anda. Toko Lawson reguler lainnya otomatis dikelompokkan ke *"Di Luar DB"* sehingga tidak mengotori database.
+4. **Keamanan Data**: File Excel tidak disimpan di harddisk server (hanya dibaca beberapa detik di RAM lalu dibuang). Data tersimpan rapi khusus untuk bulan target yang Anda pilih.
+
+---
+
+### ❓ Kenapa jumlah toko saat saya pilih bulan Juni (17 toko) berbeda dengan bulan berjalan sekarang (27 toko)?
+
+**Bukan error atau data hilang, melainkan fitur pintar berbasis tanggal aktif & riwayat organisasi:**
+1. **Tanggal Aktivasi WiFi**: Sistem memeriksa kapan toko tersebut dipasangi WiFi. Jika toko baru pasang WiFi di bulan Agustus (seperti Lawson Cihampelas), maka saat Anda membuka laporan bulan Juni, toko tersebut **otomatis disembunyikan** karena pada bulan Juni toko tersebut memang belum memiliki fasilitas WiFi.
+2. **Riwayat Struktur Organisasi AM/AC**: Pada data snapshot historis awal (Juli 2026 dan bulan sebelumnya seperti Juni), jumlah toko acuan yang aktif baru **17 toko**. Sebanyak 10 toko lainnya baru buka dan masuk struktur di bulan Agustus ke atas. Sistem secara otomatis menyelaraskan agar laporan bulan lalu hanya menampilkan toko yang memang sudah eksis pada bulan tersebut.
+
+---
+
+### ❓ Kalau ada toko baru di web vendor, apakah datanya otomatis ketarik dan bagaimana status AM/AC-nya?
+
+1. **Otomatis Ketarik 100%**: Saat Anda klik tombol "Tarik Data", sistem secara otomatis mendaftarkan toko baru tersebut ke database dan menyimpan data penggunaan WiFi hariannya.
+2. **Status Awal Bawaan**:
+   - Status diatur **Sembunyi (`is_visible = 0`)** agar tidak langsung mengotori dasbor jika toko tersebut ternyata toko testing/gudang.
+   - Diberi tanda badge kuning bertuliskan **"Baru"** di halaman Master Toko.
+   - Kode Toko (Kd Store), Tanggal Aktivasi, AM, dan AC berstatus **kosong** karena API vendor tidak memiliki data tim internal Lawson.
+3. **Cara Mengaturnya**:
+   - Buka menu **Master Toko** (`/stores`).
+   - Ubah saklar status menjadi **Tampil**.
+   - Masukkan **Kd Store** dan **Tanggal Aktivasi**.
+   - Untuk AM & AC: Anda bisa ketik manual atau gunakan tombol **"Import Excel Struktur"** untuk mengisi AM & AC semua toko secara instan dari file Excel Struktur Nasional.
+   - Klik *"Hapus label baru"* jika data toko sudah lengkap.
 
 ---
 

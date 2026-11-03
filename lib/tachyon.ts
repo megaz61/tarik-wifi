@@ -52,7 +52,14 @@ export function getTachyonAuthHeaders(session: TachyonSession): Record<string, s
 }
 
 /**
- * Login ke Tachyon (lawson-api.tachyon.net.id)
+ * =========================================================================
+ * [API 1 TACHYON - LOGIN]
+ * Hasil inspect saat submit form login di: https://lawson-cms.tachyon.net.id/login
+ * - Request URL : POST https://lawson-api.tachyon.net.id/api/v1/auth/login
+ * - Request Body: { username: "...", password: "..." }
+ * - Response    : { data: { access_token: "eyJ...", refresh_token: "..." } }
+ * Token access_token ini digunakan sebagai "Bearer Token" untuk memanggil API tabel.
+ * =========================================================================
  */
 export async function loginTachyon(user: string, pass: string): Promise<TachyonSession> {
   const loginUrl = `${TACHYON_API_BASE}/auth/login`;
@@ -102,8 +109,14 @@ export async function loginTachyon(user: string, pass: string): Promise<TachyonS
 }
 
 /**
- * Mengambil tabel per toko dari Tachyon
- * format tanggal YYYY-MM-DD
+ * =========================================================================
+ * [API 2 TACHYON - TABEL TOKO] ⭐ (API UTAMA DATA HARIAN)
+ * Hasil inspect saat tabel data toko muncul di dashboard web Tachyon:
+ * - Request URL : GET https://lawson-api.tachyon.net.id/api/v1/dashboard/tables?from=YYYY-MM-DD&to=YYYY-MM-DD
+ * - Headers     : Authorization: Bearer <access_token>
+ * - Response    : { data: [ { store_name: "...", user_count: 27, total_traffic: 629145600, ... } ] }
+ * Mengembalikan array daftar toko, jumlah pengguna WiFi, kuota upload/download, dan durasi.
+ * =========================================================================
  */
 export async function fetchTachyonTable(
   session: TachyonSession,
@@ -147,7 +160,13 @@ export async function fetchTachyonTable(
 }
 
 /**
- * Mengambil ringkasan metrics (kartu) dari Tachyon
+ * =========================================================================
+ * [API 3 TACHYON - KARTU METRICS KPI]
+ * Hasil inspect saat kartu angka ringkasan muncul di bagian atas dashboard Tachyon:
+ * - Request URL : GET https://lawson-api.tachyon.net.id/api/v1/dashboard/metrics?from=YYYY-MM-DD&to=YYYY-MM-DD
+ * - Headers     : Authorization: Bearer <access_token>
+ * - Response    : { data: { new: 150, returning: 80, total: 230 } }
+ * =========================================================================
  */
 export async function fetchTachyonMetrics(
   session: TachyonSession,

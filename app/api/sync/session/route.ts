@@ -1,3 +1,13 @@
+/**
+ * =========================================================================
+ * [API INTERNAL WEB - MULAI SESI TARIK DATA]
+ * Dipanggil oleh tombol "Tarik Data" di frontend (terlihat di inspect web kita):
+ * - Method : POST /api/sync/session
+ * - Fungsi : Di balik layar memanggil loginHypernet() dan loginTachyon()
+ *            untuk mendapatkan cookie/token login sesi selama 15 menit.
+ * =========================================================================
+ */
+
 import { NextResponse } from 'next/server';
 import { isAuthenticated, resolveHypernetCredentials, resolveTachyonCredentials } from '@/lib/auth';
 import { startSyncSession } from '@/lib/syncSession';

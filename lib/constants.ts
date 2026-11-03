@@ -13,14 +13,24 @@ export const SATUAN_DURASI_TACHYON: 's' | 'ms' = 's';
 export const TIMEZONE = 'Asia/Jakarta';
 export const TIMEZONE_OFFSET_HOURS = 7;
 
-// Hypernet Config
+// =========================================================================
+// [INSPECT NETWORK] ALAMAT DASAR API VENDOR
+// Diperoleh saat membuka tab Network (F12) pada masing-masing website vendor
+// =========================================================================
+
+// --- VENDOR HYPERNET (portal.openwifi.id) ---
+// Alamat website portal utama Hypernet
 export const HYPERNET_BASE = 'https://portal.openwifi.id';
+// ID Organisasi Lawson di sistem Hypernet (terlihat di Request Headers: 'organizationid: 84456')
 export const HYPERNET_ROOT_ORG_ID = '84456'; // Lawson
+// Daftar nama kolom data yang diminta dari server Hypernet (sesuai query param 'ColumnIds' di tab Network)
 export const HYPERNET_COLUMNS =
   'organization,users,participation,totalTransfer,transferPerUser,percentageOfTotalParentTransfer,totalDuration,durationPerUser,percentageOfTotalParentDuration';
 
-// Tachyon Config
+// --- VENDOR TACHYON (lawson-cms.tachyon.net.id) ---
+// Alamat server backend API Tachyon tempat data dikirim (terlihat di Request URL saat inspect)
 export const TACHYON_API_BASE = 'https://lawson-api.tachyon.net.id/api/v1';
+// Alamat frontend website CMS Tachyon (dipakai untuk mengisi header Origin & Referer)
 export const TACHYON_ORIGIN = 'https://lawson-cms.tachyon.net.id';
 
 // Politeness & Retry

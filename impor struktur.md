@@ -9,9 +9,10 @@ Dokumen ini menjelaskan secara rinci dan mudah dipahami mengenai **cara kerja si
 | Pertanyaan | Jawaban |
 |---|---|
 | **Apakah file Excel-nya disimpan di server/database?** | **TIDAK.** File Excel hanya dibaca di memori RAM selama 1–2 detik, lalu langsung dibuang. Tidak ada file `.xlsx` yang tersimpan di harddisk maupun database. |
+| **Sheet mana yang dibaca?** | **Khusus sheet `MASTER`.** Sistem memprioritaskan sheet `MASTER` sebagai sumber resmi struktur nasional. Jika file tidak memiliki sheet `MASTER`, sistem langsung menampilkan notifikasi error. |
 | **Apa yang sebenarnya disimpan?** | Hanya **4 teks singkat per toko**: `kd_store` (kode toko), `month` (bulan target), `am` (nama AM), dan `ac` (nama AC). |
 | **Apakah mengubah database vendor?** | **TIDAK.** Fitur ini hanya memperbarui tabel lokal Anda sendiri: `store_am_ac_history`. |
-| **Bagaimana jika kolom di Excel pindah posisi?** | **Tetap terbaca otomatis.** Sistem tidak mengunci posisi kolom (seperti kolom A, B, atau C), melainkan mencari baris judul (header) secara dinamis dengan pencocokan pola teks (*regex fuzzy matching*). |
+| **Bagaimana jika kolom di Excel pindah posisi?** | **Tetap terbaca otomatis.** Sistem tidak mengunci posisi kolom (seperti kolom A, B, atau C), melainkan mencari baris judul (header) secara dinamis pada sheet `MASTER` dengan pencocokan pola teks (*regex fuzzy matching*). |
 
 ---
 
@@ -22,31 +23,38 @@ Dokumen ini menjelaskan secara rinci dan mudah dipahami mengenai **cara kerja si
            ↓
 [Dibaca di Memori RAM oleh ExcelJS]
            ↓
-[Scan Semua Sheet & Cari Baris Judul Kolom (Fuzzy Regex)]
+[Cek Sheet "MASTER"]
+   ├── Jika tidak ada -> Beri notifikasi: "Tidak ada sheet 'MASTER'"
+   └── Jika ada -> Lanjut proses
+           ↓
+[Scan Baris Judul Kolom pada Sheet MASTER (Fuzzy Regex)]
            ↓
 [Ekstrak Nilai: Kd Store, Nama Store, AM, AC]
            ↓
-[Deduplikasi Toko Antar Sheet]
-           ↓
 [Cocokkan dengan Database Master Toko & Cek Tanggal Aktivasi WiFi]
            ↓
-[Tampilkan Preview: 17 Toko Aktif vs Toko Belum Aktif]
+[Tampilkan Preview: Toko Aktif vs Toko Belum Aktif]
            ↓
 [User Konfirmasi Simpan -> Upsert Teks ke store_am_ac_history]
 ```
 
 ---
 
-## 3. Cara Sistem Mencari Kolom Secara Otomatis
+## 3. Cara Sistem Mencari Sheet "MASTER" & Kolom Otomatis
 
-Setiap sheet di file Excel Struktur Nasional sering memiliki format berbeda (misalnya baris judul ada di baris 6, baris 12, atau urutan kolomnya terbalik-balik).
+File Excel Struktur Nasional Lawson biasanya memiliki banyak sheet (seperti *Pergantian Struktur*, *MDP AC*, *TOKO TUTUP*, dll). Agar data yang diambil selalu akurat dan tidak tercampur dengan sheet parsial/sementara, sistem bekerja dengan langkah berikut:
 
-Sistem mengatasi hal ini dengan teknik **Header Scanning & Pattern Matching**:
+### A. Verifikasi Sheet "MASTER"
+1. Sistem mencari sheet dengan nama **`MASTER`** (tidak sensitif huruf besar/kecil: `MASTER`, `Master`, atau `master`).
+2. **Jika sheet `MASTER` tidak ditemukan**:
+   Sistem langsung membatalkan proses dan menampilkan notifikasi:
+   > ❌ *Tidak ada sheet "MASTER" di dalam file Excel. Pastikan file Struktur Nasional memiliki sheet bernama "MASTER".*
+3. **Jika sheet `MASTER` ditemukan**: Sistem melanjutkan ke tahap pemindaian baris judul.
 
-### A. Memindai Baris Judul (Baris 1 s/d 30)
-Untuk setiap sheet di dalam file Excel, sistem memindai sel dari baris 1 sampai baris ke-30:
+### B. Memindai Baris Judul pada Sheet "MASTER" (Baris 1 s/d 30)
+Di dalam sheet `MASTER`, posisi baris judul bisa berubah di setiap edisi bulanan (misalnya di baris 6 atau baris 12). Sistem memindai sel dari baris 1 sampai baris ke-30:
 1. Membaca teks di setiap sel pada baris tersebut.
-2. Memeriksa apakah teks sel tersebut cocok dengan pola kata kunci kolom berikut:
+2. Memeriksa apakah teks sel cocok dengan pola kata kunci kolom berikut:
 
 | Kolom Target | Pola Teks yang Dikenali Otomatis (*Case-Insensitive*) |
 |---|---|
@@ -55,12 +63,12 @@ Untuk setiap sheet di dalam file Excel, sistem memindai sel dari baris 1 sampai 
 | **`ac`** | Seluruh variasi kata yang memuat `AREA COORDINATOR` atau singkatan `AC` |
 | **`am`** | Seluruh variasi kata yang memuat `AREA MANAGER` atau singkatan `AM` |
 
-### B. Validasi Baris Header
+### C. Validasi Baris Header
 Sebuah baris dinyatakan sebagai **Baris Judul yang Sah** jika pada baris tersebut ditemukan:
 - Kolom **`kd_store`** **DAN**
 - Minimal salah satu kolom **`am`** atau **`ac`**.
 
-Begitu baris judul ditemukan, sistem langsung mencatat nomor kolom masing-masing (misalnya: *Kd Store ada di Kolom 3, Nama di Kolom 4, AC di Kolom 10, AM di Kolom 11*).
+Begitu baris judul ditemukan, sistem langsung mencatat nomor kolom masing-masing (misalnya pada file contoh: *Kd Store di Kolom 4, Nama di Kolom 5, AC di Kolom 31, AM di Kolom 32*).
 
 ---
 
@@ -78,9 +86,9 @@ Setelah nomor kolom diketahui, sistem mulai membaca baris data tepat di bawah ba
    - Jika sel berisi formula / rumus Excel → diambil nilai hasilnya (`formula result`).
    - Jika sel berisi teks berformat warna-warni (*Rich Text*) → digabungkan menjadi teks murni.
 
-3. **Deduplikasi Antar Sheet**:
-   - Jika sebuah file memiliki beberapa sheet (misalnya sheet `MASTER`, sheet `MDP AM`, sheet `MDP AC`), sistem menggunakan sheet utama terlebih dahulu.
-   - Kode toko yang sama tidak akan dimasukkan ganda (*deduplication by kd_store*).
+3. **Fokus Tunggal ke Sheet "MASTER"**:
+   - Sistem langsung menargetkan sheet `MASTER` sebagai sumber kebenaran data (*single source of truth*) struktur organisasi toko nasional.
+   - Jika sheet `MASTER` tidak ditemukan, sistem menolak proses dan memberikan notifikasi: *"Tidak ada sheet 'MASTER' di dalam file Excel"*, sehingga terhindar dari membaca sheet sementara / parsial yang keliru.
 
 ---
 

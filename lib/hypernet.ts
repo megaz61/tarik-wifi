@@ -69,8 +69,14 @@ function extractAndMergeCookies(existingCookieStr: string, response: Response): 
 }
 
 /**
- * Login ke Hypernet (portal.openwifi.id)
- * Menangani 2FA jika "Recommend" -> skip otomatis.
+ * =========================================================================
+ * [API 1 HYPERNET - LOGIN]
+ * Hasil inspect saat submit form login di: https://portal.openwifi.id/portal/
+ * - Request URL : POST https://portal.openwifi.id/userAuth/login
+ * - Request Body: { username: "...", password: "..." }
+ * - Response    : Header 'Set-Cookie' berisi cookie sesi (openwifi_session)
+ * Cookie inilah yang disimpan dan dilampirkan di setiap request API tabel berikutnya.
+ * =========================================================================
  */
 export async function loginHypernet(user: string, pass: string): Promise<HypernetSession> {
   const loginUrl = `${HYPERNET_BASE}/userAuth/login`;
@@ -102,7 +108,8 @@ export async function loginHypernet(user: string, pass: string): Promise<Hyperne
 
       const twoFactor = data?.twoFactorType;
       if (twoFactor === 'Recommend') {
-        // Skip 2FA step
+        // [API 1b HYPERNET - LEWATI 2FA OPTIONAL]
+        // POST https://portal.openwifi.id/userAuth/twoFactor/setup/skip
         const skipRes = await safeVendorFetch(`${HYPERNET_BASE}/userAuth/twoFactor/setup/skip`, {
           method: 'POST',
           headers: {
@@ -135,7 +142,14 @@ export async function loginHypernet(user: string, pass: string): Promise<Hyperne
 }
 
 /**
- * Mengambil tabel per toko dari Hypernet untuk satu tanggal atau rentang tanggal
+ * =========================================================================
+ * [API 2 HYPERNET - TABEL STATISTIK PER TOKO] ⭐ (API UTAMA DATA HARIAN)
+ * Hasil inspect saat tabel data toko dibuka di portal Hypernet:
+ * - Request URL    : GET https://portal.openwifi.id/flow/statistics/data/organizations/subOrganizationShareTable
+ * - Query Params   : DateStart=<ms_awal>&DateEnd=<ms_akhir>&ColumnIds=organization,users,totalTransfer...
+ * - Request Headers: organizationid: 84456 (ID Lawson), timezone: Asia/Jakarta, Cookie: <cookie sesi>
+ * - Response JSON  : { "cells": [ { "organization": "Lawson Site - Cipete", "users": 42, "totalTransfer": ... } ] }
+ * =========================================================================
  */
 export async function fetchHypernetTable(
   session: HypernetSession,
@@ -188,7 +202,13 @@ export async function fetchHypernetTable(
 }
 
 /**
- * Mengambil 4 KPI Footfall dari Hypernet (New, Returning New, Returning, All Users)
+ * =========================================================================
+ * [API 3 HYPERNET - 4 KARTU KPI FOOTFALL]
+ * Hasil inspect saat 4 kartu ringkasan pengguna muncul di dasbor Hypernet:
+ * - Request URL : GET https://portal.openwifi.id/flow/statistics/data/footfall/{tipe}?DateStart=...&DateEnd=...
+ * - Tipe        : newUsers | newReturningUsers | returningUsers | users
+ * - Response    : { "value": "1234" }
+ * =========================================================================
  */
 export async function fetchHypernetKpi(
   session: HypernetSession,

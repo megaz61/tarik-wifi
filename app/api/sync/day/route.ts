@@ -1,3 +1,14 @@
+/**
+ * =========================================================================
+ * [API INTERNAL WEB - TARIK DATA PER HARI]
+ * Dipanggil berulang kali untuk setiap tanggal yang dipilih (terlihat di inspect web kita):
+ * - Method : POST /api/sync/day
+ * - Body   : { sessionId, source: "hypernet"|"tachyon", date: "YYYY-MM-DD" }
+ * - Fungsi : Memanggil fetchHypernetTable() atau fetchTachyonTable() di backend,
+ *            lalu menyimpan hasilnya ke tabel database daily_store_stats.
+ * =========================================================================
+ */
+
 import { NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { syncDayForSource } from '@/lib/syncSession';

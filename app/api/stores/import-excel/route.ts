@@ -70,65 +70,87 @@ interface SheetResult {
   rows: ParsedRow[];
 }
 
-async function parseExcel(buffer: Buffer): Promise<SheetResult[]> {
+interface ParseExcelResult {
+  sheetResults: SheetResult[];
+  hasMasterSheet: boolean;
+  masterSheetFoundName?: string;
+}
+
+async function parseExcel(buffer: Buffer): Promise<ParseExcelResult> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer as any);
 
+  // Cari sheet bernama "MASTER" (case-insensitive & trimmed)
+  const masterWs = wb.worksheets.find(
+    (ws) => ws.name.trim().toUpperCase() === "MASTER"
+  );
+
+  if (!masterWs) {
+    return { sheetResults: [], hasMasterSheet: false };
+  }
+
   const results: SheetResult[] = [];
+  const maxScanRow = 30;
+  let found: SheetResult | null = null;
 
-  wb.eachSheet((ws) => {
-    const maxScanRow = 30;
-    let found: SheetResult | null = null;
+  masterWs.eachRow({ includeEmpty: false }, (row, rn) => {
+    if (found || rn > maxScanRow) return;
 
-    ws.eachRow({ includeEmpty: false }, (row, rn) => {
-      if (found || rn > maxScanRow) return;
+    const colIndexes: Record<string, number> = {};
 
-      const colIndexes: Record<string, number> = {};
-
-      row.eachCell({ includeEmpty: false }, (cell, colIdx) => {
-        const key = matchColKey(cellStr(cell));
-        if (key && !(key in colIndexes)) {
-          colIndexes[key] = colIdx;
-        }
-      });
-
-      const hasKd = "kd_store" in colIndexes;
-      const hasAmOrAc = "am" in colIndexes || "ac" in colIndexes;
-
-      if (hasKd && hasAmOrAc) {
-        found = {
-          sheetName: ws.name,
-          headerRow: rn,
-          colIndexes,
-          rows: [],
-        };
+    row.eachCell({ includeEmpty: false }, (cell, colIdx) => {
+      const key = matchColKey(cellStr(cell));
+      if (key && !(key in colIndexes)) {
+        colIndexes[key] = colIdx;
       }
     });
 
-    if (!found) return;
+    const hasKd = "kd_store" in colIndexes;
+    const hasAmOrAc = "am" in colIndexes || "ac" in colIndexes;
 
-    const f = found as SheetResult;
-
-    ws.eachRow({ includeEmpty: false }, (row, rn) => {
-      if (rn <= f.headerRow) return;
-
-      const kdRaw = f.colIndexes.kd_store ? cellStr(row.getCell(f.colIndexes.kd_store)) : "";
-      const namaRaw = f.colIndexes.nama_store ? cellStr(row.getCell(f.colIndexes.nama_store)) : "";
-      const acRaw = f.colIndexes.ac ? cellStr(row.getCell(f.colIndexes.ac)) : "";
-      const amRaw = f.colIndexes.am ? cellStr(row.getCell(f.colIndexes.am)) : "";
-
-      const kdClean = kdRaw.replace(/\s+/g, "").toUpperCase();
-      if (!kdClean || !/^[0-9A-Z]{4,6}$/.test(kdClean)) return;
-
-      f.rows.push({ kd_store: kdClean, nama_store: namaRaw, ac: acRaw, am: amRaw });
-    });
-
-    if (f.rows.length > 0) {
-      results.push(f);
+    if (hasKd && hasAmOrAc) {
+      found = {
+        sheetName: masterWs.name,
+        headerRow: rn,
+        colIndexes,
+        rows: [],
+      };
     }
   });
 
-  return results;
+  if (!found) {
+    return {
+      sheetResults: [],
+      hasMasterSheet: true,
+      masterSheetFoundName: masterWs.name,
+    };
+  }
+
+  const f = found as SheetResult;
+
+  masterWs.eachRow({ includeEmpty: false }, (row, rn) => {
+    if (rn <= f.headerRow) return;
+
+    const kdRaw = f.colIndexes.kd_store ? cellStr(row.getCell(f.colIndexes.kd_store)) : "";
+    const namaRaw = f.colIndexes.nama_store ? cellStr(row.getCell(f.colIndexes.nama_store)) : "";
+    const acRaw = f.colIndexes.ac ? cellStr(row.getCell(f.colIndexes.ac)) : "";
+    const amRaw = f.colIndexes.am ? cellStr(row.getCell(f.colIndexes.am)) : "";
+
+    const kdClean = kdRaw.replace(/\s+/g, "").toUpperCase();
+    if (!kdClean || !/^[0-9A-Z]{4,6}$/.test(kdClean)) return;
+
+    f.rows.push({ kd_store: kdClean, nama_store: namaRaw, ac: acRaw, am: amRaw });
+  });
+
+  if (f.rows.length > 0) {
+    results.push(f);
+  }
+
+  return {
+    sheetResults: results,
+    hasMasterSheet: true,
+    masterSheetFoundName: masterWs.name,
+  };
 }
 
 export async function POST(request: Request) {
@@ -156,18 +178,29 @@ export async function POST(request: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const sheetResults = await parseExcel(buffer);
+    const parseResult = await parseExcel(buffer);
 
-    if (sheetResults.length === 0) {
+    if (!parseResult.hasMasterSheet) {
       return NextResponse.json(
         {
           error:
-            "Tidak ditemukan sheet yang memiliki kolom KD STORE dan AM/AC. " +
-            "Pastikan file adalah Struktur Nasional yang valid.",
+            'Tidak ada sheet "MASTER" di dalam file Excel. Pastikan file Struktur Nasional memiliki sheet bernama "MASTER".',
         },
         { status: 422 }
       );
     }
+
+    if (parseResult.sheetResults.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            `Sheet "${parseResult.masterSheetFoundName || "MASTER"}" ditemukan, tetapi kolom KD STORE dan AM/AC tidak terdeteksi pada baris header (baris 1-30).`,
+        },
+        { status: 422 }
+      );
+    }
+
+    const sheetResults = parseResult.sheetResults;
 
     // Merge semua sheet, deduplicate by kd_store (sheet pertama menang)
     const kdMap = new Map<string, ParsedRow>();
