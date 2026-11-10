@@ -187,10 +187,9 @@ export default function HomePage() {
   const [sortField, setSortField] = useState<SortField>(endDate);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  // Update sort field when endDate changes if sorting by last date
+  // Update sort field when endDate changes
   useEffect(() => {
     setSortField(endDate);
-    setSortOrder('asc');
   }, [endDate]);
 
   // --- Modals & Panels ---
@@ -1625,6 +1624,33 @@ export default function HomePage() {
     }
   };
 
+  // Cek apakah kolom yang diurutkan bertipe teks
+  const isTextSort = useMemo(() => {
+    return ['kd_store', 'display_name', 'am', 'ac'].includes(sortField);
+  }, [sortField]);
+
+  // Label nama kolom yang sedang diurutkan (ramah pengguna)
+  const sortFieldDisplayName = useMemo(() => {
+    if (!sortField) return '';
+    if (sortField === endDate) return `Tgl Terakhir (${formatDateColumnHeader(endDate)})`;
+    if (sortField === 'kd_store') return 'Kode Toko';
+    if (sortField === 'display_name') return 'Nama Toko';
+    if (sortField === 'am') return 'AM';
+    if (sortField === 'ac') return 'AC';
+    if (sortField === 'activation_date') return 'Tgl Aktivasi';
+    if (sortField === 'sum') return `SUM ${isMultiMonth ? 'Periode' : shortMonthUpper}`;
+    if (sortField === 'avg') return `AVG ${isMultiMonth ? 'Periode' : shortMonthUpper}`;
+    return formatDateColumnHeader(sortField);
+  }, [sortField, endDate, isMultiMonth, shortMonthUpper]);
+
+  // Label arah urutan tanpa istilah asc / desc
+  const sortOrderDisplayLabel = useMemo(() => {
+    if (isTextSort) {
+      return sortOrder === 'asc' ? 'A ke Z' : 'Z ke A';
+    }
+    return sortOrder === 'asc' ? 'Dari Terendah ke Tertinggi' : 'Dari Tertinggi ke Terendah';
+  }, [isTextSort, sortOrder]);
+
   // --- FOOTER TOTAL ROW ---
   const totals = useMemo(() => {
     const dateTotals: Record<string, number> = {};
@@ -1982,60 +2008,118 @@ export default function HomePage() {
         )}
 
         {/* FILTER BAR — di luar area capture gambar, tidak ikut di-screenshot */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs px-3 sm:px-4 py-3">
-          <div className="flex flex-col gap-2.5 text-xs">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari toko / kode..."
-                  className="w-full sm:w-52 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
-              </div>
-              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-                <select
-                  value={selectedAm}
-                  onChange={(e) => setSelectedAm(e.target.value)}
-                  className="w-full sm:w-auto px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                >
-                  <option value="">Semua AM</option>
-                  {amList.map((am) => (
-                    <option key={am} value={am}>AM: {am}</option>
-                  ))}
-                </select>
-                <select
-                  value={selectedAc}
-                  onChange={(e) => setSelectedAc(e.target.value)}
-                  className="w-full sm:w-auto px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                >
-                  <option value="">Semua AC</option>
-                  {acList.map((ac) => (
-                    <option key={ac} value={ac}>AC: {ac}</option>
-                  ))}
-                </select>
-              </div>
-              <label className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={showInactive}
-                  onChange={(e) => setShowInactive(e.target.checked)}
-                  className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                />
-                <span className="text-slate-600 font-medium text-[11px]">Tampilkan Nonaktif</span>
-              </label>
+        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs px-3 sm:px-4 py-3 space-y-2.5">
+          {/* Baris 1: Pencarian & Filter AM / AC / Nonaktif */}
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 text-xs">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari toko / kode..."
+                className="w-full sm:w-52 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
             </div>
-            <div className="text-slate-500 text-[11px] font-medium flex items-center gap-2">
-              <span>
-                Menampilkan <strong className="text-slate-900">{sortedRows.length}</strong> dari {tableRows.length} toko
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+              <select
+                value={selectedAm}
+                onChange={(e) => setSelectedAm(e.target.value)}
+                className="w-full sm:w-auto px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value="">Semua AM</option>
+                {amList.map((am) => (
+                  <option key={am} value={am}>AM: {am}</option>
+                ))}
+              </select>
+              <select
+                value={selectedAc}
+                onChange={(e) => setSelectedAc(e.target.value)}
+                className="w-full sm:w-auto px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value="">Semua AC</option>
+                {acList.map((ac) => (
+                  <option key={ac} value={ac}>AC: {ac}</option>
+                ))}
+              </select>
+            </div>
+
+            <label className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+              />
+              <span className="text-slate-600 font-medium text-[11px]">Tampilkan Nonaktif</span>
+            </label>
+          </div>
+
+          {/* Baris 2: Kontrol Pengurutan Lengkap & Tombol Pilihan Arah */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-slate-700 font-bold text-xs flex items-center gap-1.5 shrink-0">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
+                <span>Urutkan:</span>
               </span>
-              {sortField && (
-                <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-600">
-                  Urutan: {sortField === endDate ? `Tgl Terakhir (${formatDateColumnHeader(endDate)})` : sortField} ({sortOrder.toUpperCase()})
-                </span>
-              )}
+
+              {/* Pilihan Kolom Dropdown */}
+              <select
+                value={sortField}
+                onChange={(e) => setSortField(e.target.value)}
+                className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-xs"
+                aria-label="Pilih kolom yang akan diurutkan"
+              >
+                <option value={endDate}>
+                  Tgl Terakhir ({formatDateColumnHeader(endDate)})
+                </option>
+                <option value="display_name">Nama Toko</option>
+                <option value="kd_store">Kode Toko</option>
+                <option value="sum">Total ({isMultiMonth ? 'SUM Periode' : `SUM ${shortMonthUpper}`})</option>
+                <option value="avg">Rata-rata ({isMultiMonth ? 'AVG Periode' : `AVG ${shortMonthUpper}`})</option>
+                <option value="am">AM</option>
+                <option value="ac">AC</option>
+                <option value="activation_date">Tanggal Aktivasi</option>
+                {selectedDatesList.length > 1 && selectedDatesList.filter((d) => d !== endDate).map((d) => (
+                  <option key={d} value={d}>
+                    Tanggal {formatDateColumnHeader(d)}
+                  </option>
+                ))}
+              </select>
+
+              {/* Tombol Pilihan Arah (Tombol Segmented Sangat Jelas) */}
+              <div className="inline-flex rounded-xl p-0.5 bg-slate-100 border border-slate-200 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setSortOrder('desc')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    sortOrder === 'desc'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
+                  title={isTextSort ? 'Urutkan dari Z ke A' : 'Urutkan dari nilai tertinggi ke terendah'}
+                >
+                  <span>▼</span>
+                  <span>{isTextSort ? 'Dari Z ke A' : 'Dari Tertinggi'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSortOrder('asc')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    sortOrder === 'asc'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
+                  title={isTextSort ? 'Urutkan dari A ke Z' : 'Urutkan dari nilai terendah ke tertinggi'}
+                >
+                  <span>▲</span>
+                  <span>{isTextSort ? 'Dari A ke Z' : 'Dari Terendah'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="text-slate-500 text-[11px] font-medium shrink-0">
+              Menampilkan <strong className="text-slate-900">{sortedRows.length}</strong> dari {tableRows.length} toko
             </div>
           </div>
         </div>
@@ -2131,8 +2215,25 @@ export default function HomePage() {
 
           {/* BAGIAN 1 — TABEL REKAP TOKO (Section 6) */}
           <section className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+            {/* Indikator Status Urutan & Tips Interaktif */}
+            <div className="px-3 sm:px-4 py-2 bg-blue-50/70 border-b border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-blue-600 text-white text-[11px] font-bold shadow-2xs">
+                  {sortOrder === 'asc' ? '▲' : '▼'}
+                </span>
+                <span className="text-slate-700 font-medium">
+                  Urutan saat ini: <strong className="text-slate-900 font-bold">{sortFieldDisplayName}</strong>
+                  {' '}(<span className="text-blue-700 font-bold">{sortOrderDisplayLabel}</span>)
+                </span>
+              </div>
+              <span className="text-[11px] text-blue-800/80 font-medium flex items-center gap-1">
+                <span>💡</span>
+                <span>Klik judul kolom manapun pada tabel untuk mengurutkan</span>
+              </span>
+            </div>
+
             {/* Mobile Swipe Hint */}
-            <div className="sm:hidden px-3 py-1.5 bg-blue-50 border-b border-blue-100 text-[11px] text-blue-700 flex items-center gap-1.5 font-medium">
+            <div className="sm:hidden px-3 py-1.5 bg-blue-50/40 border-b border-blue-100 text-[11px] text-blue-700 flex items-center gap-1.5 font-medium">
               <span>👉 Geser ke kanan untuk melihat semua kolom tanggal</span>
             </div>
             {/* Scrollable Table View with Sticky Columns */}
@@ -2144,11 +2245,20 @@ export default function HomePage() {
                     <th
                       scope="col"
                       onClick={() => handleSort('kd_store')}
-                      className="py-3 px-2 sm:px-3.5 w-14 sm:w-24 sticky left-0 z-30 bg-slate-50 border-r border-slate-200/80 cursor-pointer hover:bg-slate-100 select-none"
+                      className={`py-3 px-2 sm:px-3.5 w-14 sm:w-24 sticky left-0 z-30 border-r border-slate-200/80 cursor-pointer select-none transition-colors ${
+                        sortField === 'kd_store' ? 'bg-blue-100 text-blue-900 border-b-2 border-blue-600' : 'bg-slate-50 hover:bg-blue-50/80'
+                      }`}
+                      title="Klik untuk mengurutkan berdasarkan kode toko"
                     >
                       <div className="flex items-center justify-between gap-1">
                         <span>Kd</span>
-                        <ArrowUpDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-400" />
+                        {sortField === 'kd_store' ? (
+                          <span className="text-blue-600 text-[10px] font-black">
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                          </span>
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-400" />
+                        )}
                       </div>
                     </th>
 
@@ -2156,11 +2266,20 @@ export default function HomePage() {
                     <th
                       scope="col"
                       onClick={() => handleSort('display_name')}
-                      className="py-3 px-2 sm:px-4 min-w-[130px] sm:min-w-[260px] max-w-[160px] sm:max-w-[320px] sticky left-14 sm:left-24 z-30 bg-slate-50 border-r border-slate-200/80 cursor-pointer hover:bg-slate-100 select-none shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]"
+                      className={`py-3 px-2 sm:px-4 min-w-[130px] sm:min-w-[260px] max-w-[160px] sm:max-w-[320px] sticky left-14 sm:left-24 z-30 border-r border-slate-200/80 cursor-pointer select-none shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors ${
+                        sortField === 'display_name' ? 'bg-blue-100 text-blue-900 border-b-2 border-blue-600' : 'bg-slate-50 hover:bg-blue-50/80'
+                      }`}
+                      title="Klik untuk mengurutkan berdasarkan nama toko"
                     >
                       <div className="flex items-center justify-between gap-1">
                         <span>Toko</span>
-                        <ArrowUpDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-400" />
+                        {sortField === 'display_name' ? (
+                          <span className="text-blue-600 text-[10px] font-black">
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                          </span>
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-400" />
+                        )}
                       </div>
                     </th>
 
@@ -2168,11 +2287,20 @@ export default function HomePage() {
                     <th
                       scope="col"
                       onClick={() => handleSort('am')}
-                      className="py-3 px-3 w-20 text-center cursor-pointer hover:bg-slate-100 select-none"
+                      className={`py-3 px-3 w-20 text-center cursor-pointer select-none transition-colors ${
+                        sortField === 'am' ? 'bg-blue-100 text-blue-900 border-b-2 border-blue-600' : 'hover:bg-blue-50/80'
+                      }`}
+                      title="Klik untuk mengurutkan berdasarkan AM"
                     >
                       <div className="flex items-center justify-center gap-1">
                         <span>AM</span>
-                        <ArrowUpDown className="w-2.5 h-2.5 text-slate-400" />
+                        {sortField === 'am' ? (
+                          <span className="text-blue-600 text-[10px] font-black">
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                          </span>
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 text-slate-400" />
+                        )}
                       </div>
                     </th>
 
@@ -2180,11 +2308,20 @@ export default function HomePage() {
                     <th
                       scope="col"
                       onClick={() => handleSort('ac')}
-                      className="py-3 px-3 w-20 text-center cursor-pointer hover:bg-slate-100 select-none"
+                      className={`py-3 px-3 w-20 text-center cursor-pointer select-none transition-colors ${
+                        sortField === 'ac' ? 'bg-blue-100 text-blue-900 border-b-2 border-blue-600' : 'hover:bg-blue-50/80'
+                      }`}
+                      title="Klik untuk mengurutkan berdasarkan AC"
                     >
                       <div className="flex items-center justify-center gap-1">
                         <span>AC</span>
-                        <ArrowUpDown className="w-2.5 h-2.5 text-slate-400" />
+                        {sortField === 'ac' ? (
+                          <span className="text-blue-600 text-[10px] font-black">
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                          </span>
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 text-slate-400" />
+                        )}
                       </div>
                     </th>
 
@@ -2192,11 +2329,20 @@ export default function HomePage() {
                     <th
                       scope="col"
                       onClick={() => handleSort('activation_date')}
-                      className="py-3 px-3 w-28 text-center cursor-pointer hover:bg-slate-100 select-none"
+                      className={`py-3 px-3 w-28 text-center cursor-pointer select-none transition-colors ${
+                        sortField === 'activation_date' ? 'bg-blue-100 text-blue-900 border-b-2 border-blue-600' : 'hover:bg-blue-50/80'
+                      }`}
+                      title="Klik untuk mengurutkan berdasarkan tanggal aktivasi"
                     >
                       <div className="flex items-center justify-center gap-1">
                         <span>Tgl Aktivasi</span>
-                        <ArrowUpDown className="w-2.5 h-2.5 text-slate-400" />
+                        {sortField === 'activation_date' ? (
+                          <span className="text-blue-600 text-[10px] font-black">
+                            {sortOrder === 'asc' ? '▲' : '▼'}
+                          </span>
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 text-slate-400" />
+                        )}
                       </div>
                     </th>
 
@@ -2206,14 +2352,19 @@ export default function HomePage() {
                         key={d}
                         scope="col"
                         onClick={() => handleSort(d)}
-                        className={`py-3 px-2.5 min-w-[85px] text-right cursor-pointer hover:bg-slate-100 select-none ${d === endDate ? 'bg-blue-50/70 text-blue-900 font-extrabold' : ''
-                          }`}
-                        title={`Urutkan berdasarkan nilai tanggal ${d}`}
+                        className={`py-3 px-2.5 min-w-[85px] text-right cursor-pointer select-none transition-colors ${
+                          sortField === d
+                            ? 'bg-blue-100 text-blue-900 font-extrabold border-b-2 border-blue-600'
+                            : d === endDate
+                            ? 'bg-blue-50/70 text-blue-900 font-bold hover:bg-blue-100/60'
+                            : 'hover:bg-blue-50/70'
+                        }`}
+                        title={`Klik untuk mengurutkan berdasarkan nilai tanggal ${d}`}
                       >
                         <div className="flex items-center justify-end gap-1 font-mono">
                           <span>{formatDateColumnHeader(d)}</span>
                           {sortField === d && (
-                            <span className="text-blue-600 text-[10px]">
+                            <span className="text-blue-600 text-[10px] font-black">
                               {sortOrder === 'asc' ? '▲' : '▼'}
                             </span>
                           )}
@@ -2225,12 +2376,15 @@ export default function HomePage() {
                     <th
                       scope="col"
                       onClick={() => handleSort('sum')}
-                      className="py-3 px-3.5 min-w-[95px] text-right bg-blue-50/40 text-blue-900 border-l border-slate-200 cursor-pointer hover:bg-blue-100/50 select-none font-bold"
+                      className={`py-3 px-3.5 min-w-[95px] text-right border-l border-slate-200 cursor-pointer select-none font-bold transition-colors ${
+                        sortField === 'sum' ? 'bg-blue-100 text-blue-900 border-b-2 border-blue-600' : 'bg-blue-50/40 text-blue-900 hover:bg-blue-100/50'
+                      }`}
+                      title="Klik untuk mengurutkan berdasarkan total SUM"
                     >
                       <div className="flex items-center justify-end gap-1 font-mono">
                         <span>SUM {isMultiMonth ? 'PERIODE' : shortMonthUpper}</span>
                         {sortField === 'sum' && (
-                          <span className="text-blue-600 text-[10px]">
+                          <span className="text-blue-600 text-[10px] font-black">
                             {sortOrder === 'asc' ? '▲' : '▼'}
                           </span>
                         )}
@@ -2241,12 +2395,15 @@ export default function HomePage() {
                     <th
                       scope="col"
                       onClick={() => handleSort('avg')}
-                      className="py-3 px-3.5 min-w-[90px] text-right bg-blue-50/40 text-blue-900 border-l border-slate-200 cursor-pointer hover:bg-blue-100/50 select-none font-bold"
+                      className={`py-3 px-3.5 min-w-[90px] text-right border-l border-slate-200 cursor-pointer select-none font-bold transition-colors ${
+                        sortField === 'avg' ? 'bg-blue-100 text-blue-900 border-b-2 border-blue-600' : 'bg-blue-50/40 text-blue-900 hover:bg-blue-100/50'
+                      }`}
+                      title="Klik untuk mengurutkan berdasarkan rata-rata AVG"
                     >
                       <div className="flex items-center justify-end gap-1 font-mono">
                         <span>AVG {isMultiMonth ? 'PERIODE' : shortMonthUpper}</span>
                         {sortField === 'avg' && (
-                          <span className="text-blue-600 text-[10px]">
+                          <span className="text-blue-600 text-[10px] font-black">
                             {sortOrder === 'asc' ? '▲' : '▼'}
                           </span>
                         )}
